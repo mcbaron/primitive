@@ -19,6 +19,12 @@ function Base.:+(a::primitive, b::primitive)
 
     primitive(center, maj, min, ang, a.name)
 end
+
+import Base.copy
+function Base.:copy(a::primitive)
+    b = primitive(a.center, a.majlen, a.minlen, a.angle, a.name)
+    return b
+end
 # Define helper functions
 
 # Load float image
@@ -59,7 +65,7 @@ end
 
 function applyMask(canvas, shape::primitive, src_img)
     # Take in a canvas, a shape, and the source image.
-    m, n = size(canvas)
+    m, n = size(src_img)
     # Figure out what pixels on the canvas are under the shape given parameters
     mask = makeShape(shape, [m,n])
     # calculate fill color as a weighted sum of the colors of pixels in
@@ -84,9 +90,9 @@ function mutateShape(shape::primitive)
     # granularity
     g = 16
 
-    c_offset = Point(rand(1:g), rand(1:g))
-    maj_offset = rand(1:g)
-    min_offset = rand(1:g)
+    c_offset = Point(rand(-g:g), rand(-g:g))
+    maj_offset = rand(-g:g)
+    min_offset = rand(-g:g)
     ang_offset = 2*π*rand(0:2*g)/360
 
     offset = primitive(c_offset, maj_offset, min_offset, ang_offset, shape.name)
@@ -95,7 +101,7 @@ end
 
 # Trinagle Specific Functions
 function triangleRasterize(tri::primitive, bounds::Vector)
-    Drawing(bounds[1], bounds[2], "mask.png")
+    Drawing(bounds[2], bounds[1], "mask.png")
     background("black")
     sethue("white")
 
@@ -107,7 +113,7 @@ end
 
 # Rectangle Specific Functions
 function rectangleRasterize(rec::primitive, bounds::Vector)
-    Drawing(bounds[1], bounds[2], "mask.png")
+    Drawing(bounds[2], bounds[1], "mask.png")
     background("black")
     sethue("white")
 
@@ -120,7 +126,7 @@ end
 
 # Ellipse Specific Functions
 function ellipseRasterize(ellip::primitive, bounds::Vector)
-    Drawing(bounds[1], bounds[2], "mask.png")
+    Drawing(bounds[2], bounds[1], "mask.png")
     background("black")
     sethue("white")
 
@@ -133,7 +139,7 @@ end
 
 # Curve Specific Functions
 function curveRasterize(cve::primitive, bounds::Vector)
-    Drawing(bounds[1], bounds[2], "mask.png")
+    Drawing(bounds[2], bounds[1], "mask.png")
     background("black")
 
     v0, v1, v2 = ngon(cve.center, cve.majlen, 3, cve.angle, vertices=true)
