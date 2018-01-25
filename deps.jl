@@ -46,7 +46,7 @@ function genRandShape(shape::String, bounds::Vector)
     minlen = clamp(rand(1:.1:cvsdiag), 10, majlen)
     ang = rand(1:.05:2*π) # granularity of .05 radians
 
-    return P = primitive(center, majlen, minlen, ang, shape)
+    return primitive(center, majlen, minlen, ang, shape)
 end
 
 function makeShape(shape::primitive, canvas_size::Vector)
@@ -75,7 +75,8 @@ function applyMask(canvas, shape::primitive, src_img)
     # extract the mean color under the mask
     offset = mean(canvas[Bool.(mask)])
     c_fill = color - offset
-    return canvas += c_fill .* Float64.(mask)
+    masked_canvas = copy(canvas)
+    return masked_canvas += c_fill .* Float64.(mask)
 end
 
 function MSE(image, canvas)
@@ -148,4 +149,25 @@ function curveRasterize(cve::primitive, bounds::Vector)
     arc2r(v0, v1, v2, :stroke)
     finish()
     return loadBitImage("mask.png")
+end
+
+# Hill Climbing
+function hillClimb(canvas, shape::primitive, image, max_age::Int)
+    best_canvas = copy(canvas)
+    best_error = MSE(image, best_canvas)
+    step = 0
+
+    for age = 0:max_age
+        new_shape = mutateShape(shape)
+        new_canvas = applyMask(canvas, new_shape, image)
+        new_error = MSE(image, new_canvas)
+        if new_error < best_error
+            best_error = copy(new_error)
+            best_canvas = copy(new_canvas)
+            age = -1
+            shape = copy(new_shape)
+        end
+        step += 1
+    end
+    return best_canvas
 end
