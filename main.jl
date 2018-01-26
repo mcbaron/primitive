@@ -3,13 +3,13 @@ using ProgressMeter
 # Include helper functions
 include("deps.jl")
 
-in_path = "images/sukii.jpg"
-# in_path = "images/lawrence.jpg"
+# in_path = "images/sukii.jpg"
+in_path = "images/lawrence.jpg"
 # Constants:
-shape = "Triangle"
-num_shape = 100
+shape = "Ellipse"
+num_shape = 500
 pick_from_n = 12
-max_age_of_shape = 10
+max_age_of_shape = 15
 
 in_img = loadFloatImage(in_path)
 
@@ -38,4 +38,5 @@ avail_score = Array{Float64}(pick_from_n)
     canvas = hillClimb(canvas, cur_shape, in_img, max_age_of_shape)
 
 end
-imshow(canvas)
+# imshow(canvas)
+save("images/500Ellipse.png", map(clamp01nan, canvas))
