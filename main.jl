@@ -7,7 +7,7 @@ include("deps.jl")
 in_path = "images/lawrence.jpg"
 # Constants:
 shape = "Ellipse"
-num_shape = 500
+num_shape = 2500
 pick_from_n = 12
 max_age_of_shape = 15
 
@@ -39,4 +39,4 @@ avail_score = Array{Float64}(pick_from_n)
 
 end
 # imshow(canvas)
-save("images/500Ellipse.png", map(clamp01nan, canvas))
+save("images/2500Ellipse.png", canvas)
