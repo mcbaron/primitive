@@ -1,0 +1,5 @@
+shape: "Ellipse"
+num_shape: 25
+pick_from_n: 12
+max_age_of_shape: 15
+in_path: "images/640px-pencils.jpg"

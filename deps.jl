@@ -1,8 +1,9 @@
 # deps.jl
 using Luxor, Colors, FileIO, ImageView
 using ColorVectorSpace
+using Base.Threads
 
-type primitive
+struct primitive
     center::Point
     majlen::Float64
     minlen::Float64
@@ -35,7 +36,7 @@ end
 
 # Load bit (binary) image
 function loadBitImage(path)
-    return (Images.Gray.(load(path)) .> 0.5)
+    return (Gray.(load(path)) .> 0.5)
 end
 
 
@@ -60,6 +61,8 @@ function makeShape(shape::primitive, canvas_size::Vector)
         return ellipseRasterize(shape, canvas_size)
     elseif shape.name == "Curve"
         return curveRasterize(shape, canvas_size)
+    else
+        error("Invalid shape name: $(shape.name)")
     end
 end
 
@@ -81,7 +84,7 @@ end
 
 function MSE(image, canvas)
     # Take in an image and a canvas
-    # Return the Variance between the canvas and the image
+    # Return the MSE between the canvas and the image
     h = (image - canvas)[:]
     return sum([red.(h)'*red.(h), green.(h)'*green.(h), blue.(h)'*blue.(h)])
 end
@@ -154,20 +157,60 @@ end
 # Hill Climbing
 function hillClimb(canvas, shape::primitive, image, max_age::Int)
     best_canvas = copy(canvas)
-    best_error = MSE(image, best_canvas)
+    best_error = Threads.Atomic{Float64}(MSE(image, best_canvas))
     step = 0
 
-    for age = 0:max_age
+    Threads.@threads for age = 0:max_age
         new_shape = mutateShape(shape)
         new_canvas = applyMask(canvas, new_shape, image)
         new_error = MSE(image, new_canvas)
-        if new_error < best_error
-            best_error = copy(new_error)
-            best_canvas = copy(new_canvas)
+        if new_error < best_error.value
+            Threads.atomic_add!(best_error, new_error - best_error.value)
+            best_canvas = new_canvas
             age = -1
-            shape = copy(new_shape)
+            shape = new_shape
         end
         step += 1
     end
     return best_canvas
+end
+
+
+function makeResultCanvas(config)
+    # Extract values from the config dictionary
+    shape = get(config, "shape", "Ellipse")
+    num_shape = get(config, "num_shape", 25)
+    pick_from_n = get(config, "pick_from_n", 12)
+    max_age_of_shape = get(config, "max_age_of_shape", 15)
+    in_path = get(config, "in_path", "images/640px-pencils.jpg")
+
+    in_img = loadFloatImage(in_path)
+
+    m, n = size(in_img)
+    bounds = [m, n]
+
+    # Initialize the background color to the average of the image.
+    mean_color = mean(in_img)
+    global canvas = fill(mean_color, size(in_img))
+
+    @showprogress 1 "Fitting Shapes..." for i = 1:num_shape
+        avail_shapes = Array{primitive}(undef, pick_from_n)
+        avail_canvases = fill(canvas, pick_from_n)
+        avail_score = Array{Float64}(undef, pick_from_n)
+        
+        # Generate N random shapes, pick the best one, and start hill climbing
+        Threads.@threads for j = 1:pick_from_n
+            avail_shapes[j] = genRandShape(shape, bounds)
+            avail_canvases[j] = applyMask(avail_canvases[j], avail_shapes[j], in_img)
+            avail_score[j] = MSE(in_img, avail_canvases[j])
+        end
+        
+        best_error, s_index = findmin(avail_score)
+        # extract the "best" shape
+        cur_shape = avail_shapes[s_index]
+        cur_canvas = avail_canvases[s_index]
+        # Mutate + Hill Climb
+        global canvas = hillClimb(canvas, cur_shape, in_img, max_age_of_shape)
+    end
+        return canvas
 end
